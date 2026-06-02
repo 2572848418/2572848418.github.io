@@ -1,0 +1,228 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>HashMap 源码解析 | 张有志108号</title><meta name="keywords" content="java"><meta name="author" content="rain"><meta name="copyright" content="rain"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="HashMap 存储结构、扩容与哈希冲突处理">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HashMap 源码解析">
+<meta property="og:url" content="http://example.com/2026/06/02/hashmap-source-analysis/index.html">
+<meta property="og:site_name" content="张有志108号">
+<meta property="og:description" content="HashMap 存储结构、扩容与哈希冲突处理">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pic1.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg">
+<meta property="article:published_time" content="2026-06-02T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-02T08:14:10.534Z">
+<meta property="article:author" content="rain">
+<meta property="article:tag" content="java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic1.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg"><link rel="shortcut icon" href="/img/favicon.svg"><link rel="canonical" href="http://example.com/2026/06/02/hashmap-source-analysis/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><meta/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'HashMap 源码解析',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2026-06-02 16:14:10'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/custom.css"  media="defer" onload="this.media='all'"><meta name="generator" content="Hexo 6.1.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/MnZEjeh5avBhia8G4trM1GXYiajlqCicFsyzYONaw8ILzaD0s6vxMnpPOaHhzQ4e4o4ZUkFcBJcKQ1ohfNC4YRlhg/132" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-heartbeat"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://pic1.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">张有志108号</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-heartbeat"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">HashMap 源码解析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-02T02:00:00.000Z" title="发表于 2026-06-02 10:00:00">2026-06-02</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-02T08:14:10.534Z" title="更新于 2026-06-02 16:14:10">2026-06-02</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="HashMap 源码解析"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p><code>HashMap</code> 是日常开发中使用频率最高的集合之一。理解它的底层实现，有助于写出更合理的代码，也能为学习 <code>ConcurrentHashMap</code>、<code>LinkedHashMap</code> 打下基础。本文基于 <strong>JDK 8</strong> 梳理 <code>HashMap</code> 的核心设计。</p>
+<h2 id="1-整体结构"><a href="#1-整体结构" class="headerlink" title="1. 整体结构"></a>1. 整体结构</h2><p>JDK 8 之后，<code>HashMap</code> 由 <strong>数组 + 链表 + 红黑树</strong> 组成：</p>
+<ul>
+<li>底层是 <code>Node&lt;K,V&gt;[] table</code> 数组，每个下标称为一个 <strong>桶（bucket）</strong>。</li>
+<li>哈希冲突时，同一桶内用链表串联；链表长度超过阈值（默认 8）且数组长度 ≥ 64 时，链表转为 <strong>红黑树</strong>。</li>
+<li>树节点退化为链表的条件是树节点数 ≤ 6。</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">DEFAULT_INITIAL_CAPACITY</span> <span class="operator">=</span> <span class="number">1</span> &lt;&lt; <span class="number">4</span>; <span class="comment">// 16</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">float</span> <span class="variable">DEFAULT_LOAD_FACTOR</span> <span class="operator">=</span> <span class="number">0.75f</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">TREEIFY_THRESHOLD</span> <span class="operator">=</span> <span class="number">8</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">UNTREEIFY_THRESHOLD</span> <span class="operator">=</span> <span class="number">6</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">MIN_TREEIFY_CAPACITY</span> <span class="operator">=</span> <span class="number">64</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-哈希定位"><a href="#2-哈希定位" class="headerlink" title="2. 哈希定位"></a>2. 哈希定位</h2><p><code>put</code> 时通过 <code>(n - 1) &amp; hash</code> 计算下标，其中 <code>n</code> 为数组长度（必须为 2 的幂）。<code>hash</code> 由高 16 位与低 16 位异或得到，目的是让高位也参与运算，减少碰撞：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="title function_">hash</span><span class="params">(Object key)</span> &#123;</span><br><span class="line">    <span class="type">int</span> h;</span><br><span class="line">    <span class="keyword">return</span> (key == <span class="literal">null</span>) ? <span class="number">0</span> : (h = key.hashCode()) ^ (h &gt;&gt;&gt; <span class="number">16</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么容量是 2 的幂？</strong> 取模可优化为位与运算，且扩容时元素下标要么不变，要么变为 <code>oldIndex + oldCapacity</code>，迁移成本更低。</p>
+<h2 id="3-put-流程简述"><a href="#3-put-流程简述" class="headerlink" title="3. put 流程简述"></a>3. put 流程简述</h2><ol>
+<li>若 <code>table</code> 为空，先 <code>resize()</code> 初始化。</li>
+<li>计算下标，若桶为空，直接放入新 <code>Node</code>。</li>
+<li>若 key 已存在（<code>hash</code> 相等且 <code>equals</code>），更新 value。</li>
+<li>若为树节点，走 <code>TreeNode.putTreeVal</code>。</li>
+<li>否则在链表尾部追加；追加后若链表长度 ≥ 8，尝试 <code>treeifyBin</code>。</li>
+<li><code>size</code> 自增，超过 <code>threshold</code>（容量 × 负载因子）则扩容。</li>
+</ol>
+<h2 id="4-扩容（resize）"><a href="#4-扩容（resize）" class="headerlink" title="4. 扩容（resize）"></a>4. 扩容（resize）</h2><p>扩容时容量变为原来的 <strong>2 倍</strong>，<code>threshold</code> 同步翻倍。每个元素重新计算下标：</p>
+<ul>
+<li>若 <code>(e.hash &amp; oldCap) == 0</code>，下标不变；</li>
+<li>否则下标为 <code>oldIndex + oldCap</code>。</li>
+</ul>
+<p>这一技巧避免了重新计算完整哈希，是 JDK 8 的重要优化。</p>
+<h2 id="5-get-流程"><a href="#5-get-流程" class="headerlink" title="5. get 流程"></a>5. get 流程</h2><ol>
+<li>计算下标，取桶头节点。</li>
+<li>头节点即目标则返回。</li>
+<li>若为树，在红黑树中查找。</li>
+<li>否则遍历链表，匹配 <code>hash</code> 与 <code>equals</code>。</li>
+</ol>
+<h2 id="6-与-Hashtable、ConcurrentHashMap-对比"><a href="#6-与-Hashtable、ConcurrentHashMap-对比" class="headerlink" title="6. 与 Hashtable、ConcurrentHashMap 对比"></a>6. 与 Hashtable、ConcurrentHashMap 对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>HashMap</th>
+<th>Hashtable</th>
+<th>ConcurrentHashMap</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线程安全</td>
+<td>否</td>
+<td>是（synchronized 方法）</td>
+<td>是</td>
+</tr>
+<tr>
+<td>null key&#x2F;value</td>
+<td>允许</td>
+<td>不允许</td>
+<td>不允许</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>高</td>
+<td>低</td>
+<td>高（分段&#x2F;CAS）</td>
+</tr>
+</tbody></table>
+<h2 id="7-使用注意"><a href="#7-使用注意" class="headerlink" title="7. 使用注意"></a>7. 使用注意</h2><ol>
+<li>**重写 <code>equals</code> 必须重写 <code>hashCode</code>**，否则相同逻辑的对象可能落在不同桶，导致重复 key 或查不到。</li>
+<li><strong>初始容量</strong> 预估可避免多次扩容；<code>new HashMap&lt;&gt;(expectedSize)</code> 时，内部会按 <code>loadFactor</code> 反算容量。</li>
+<li><strong>遍历修改</strong> 会触发 <code>fail-fast</code>（<code>modCount</code> 变化抛 <code>ConcurrentModificationException</code>），并发场景用 <code>ConcurrentHashMap</code> 或迭代时勿结构性修改。</li>
+<li>JDK 7 在并发下扩容可能形成 <strong>环形链表</strong>（死循环），JDK 8 改为头插改尾插 + 拆分链表，已修复该问题。</li>
+</ol>
+<h2 id="8-小结"><a href="#8-小结" class="headerlink" title="8. 小结"></a>8. 小结</h2><p><code>HashMap</code> 通过数组下标 O(1) 定位、链表与红黑树处理冲突、按负载因子扩容，在时间与空间之间取得平衡。掌握 <strong>哈希计算、put&#x2F;get、扩容与树化</strong> 四条主线，即可应对大部分面试与排障场景。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">rain</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2026/06/02/hashmap-source-analysis/">http://example.com/2026/06/02/hashmap-source-analysis/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">张有志108号</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/java/">java</a></div><div class="post_share"><div class="social-share" data-image="https://pic1.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2026/06/02/volatile-keyword/"><img class="prev-cover" src="https://pic3.zhimg.com/80/v2-bbf2fe96f4955399586b6f82bbe11ed2_720w.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">volatile 关键字详解</div></div></a></div><div class="next-post pull-right"><a href="/2024/04/10/CompletableFuture/"><img class="next-cover" src="https://pic1.zhimg.com/v2-712f82e2546238d7a3f08dfdb3520fdc_r.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">CompletableFuture 详解</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2024/04/10/CompletableFuture/" title="CompletableFuture 详解"><img class="cover" src="https://pic1.zhimg.com/v2-712f82e2546238d7a3f08dfdb3520fdc_r.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">CompletableFuture 详解</div></div></a></div><div><a href="/2024/04/10/ConcurrentHashMap/" title="ConcurrentHashMap 源码解析"><img class="cover" src="https://pic3.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">ConcurrentHashMap 源码解析</div></div></a></div><div><a href="/2024/04/10/aboutThreadPool/" title="关于线程池的声明及使用"><img class="cover" src="https://pic1.zhimg.com/v2-ef7f14468872013bcffb4fdb25e21e04_r.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">关于线程池的声明及使用</div></div></a></div><div><a href="/2024/04/10/blockQueue/" title="JAVA阻塞队列"><img class="cover" src="https://pic3.zhimg.com/v2-781743893ea21c17f3c2411b22c440f6_r.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">JAVA阻塞队列</div></div></a></div><div><a href="/2024/04/10/Java8/" title="Java8 新特性"><img class="cover" src="https://pic2.zhimg.com/80/v2-956755678361f9541d3606ca60590665_720w.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">Java8 新特性</div></div></a></div><div><a href="/2024/04/10/io-basis/" title="Java IO 基础知识总结"><img class="cover" src="https://pic3.zhimg.com/80/v2-1a3081bfb6402013e3bafa87e997f40e_720w.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-10</div><div class="title">Java IO 基础知识总结</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://thirdwx.qlogo.cn/mmopen/vi_32/MnZEjeh5avBhia8G4trM1GXYiajlqCicFsyzYONaw8ILzaD0s6vxMnpPOaHhzQ4e4o4ZUkFcBJcKQ1ohfNC4YRlhg/132" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">rain</div><div class="author-info__description">是时候了，是时候返回大海了</div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/xxxxx" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="mailto:xxxxxx@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">1. 整体结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%93%88%E5%B8%8C%E5%AE%9A%E4%BD%8D"><span class="toc-number">2.</span> <span class="toc-text">2. 哈希定位</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-put-%E6%B5%81%E7%A8%8B%E7%AE%80%E8%BF%B0"><span class="toc-number">3.</span> <span class="toc-text">3. put 流程简述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%89%A9%E5%AE%B9%EF%BC%88resize%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">4. 扩容（resize）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-get-%E6%B5%81%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">5. get 流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E4%B8%8E-Hashtable%E3%80%81ConcurrentHashMap-%E5%AF%B9%E6%AF%94"><span class="toc-number">6.</span> <span class="toc-text">6. 与 Hashtable、ConcurrentHashMap 对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E4%BD%BF%E7%94%A8%E6%B3%A8%E6%84%8F"><span class="toc-number">7.</span> <span class="toc-text">7. 使用注意</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">8. 小结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/06/03/java-reference-types/" title="Java 四种引用类型详解"><img src="https://pic1.zhimg.com/v2-526e03d542420a445ea3113417d592be_r.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Java 四种引用类型详解"/></a><div class="content"><a class="title" href="/2026/06/03/java-reference-types/" title="Java 四种引用类型详解">Java 四种引用类型详解</a><time datetime="2026-06-03T11:00:00.000Z" title="发表于 2026-06-03 19:00:00">2026-06-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/06/03/java-deadlock-detection/" title="死锁原理与排查实战"><img src="https://pic4.zhimg.com/80/v2-9e0b3b19cb25dc8335b4dc875e03e843_720w.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="死锁原理与排查实战"/></a><div class="content"><a class="title" href="/2026/06/03/java-deadlock-detection/" title="死锁原理与排查实战">死锁原理与排查实战</a><time datetime="2026-06-03T10:00:00.000Z" title="发表于 2026-06-03 18:00:00">2026-06-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/06/03/cas-and-atomic-classes/" title="CAS 与原子类详解"><img src="https://pic3.zhimg.com/80/v2-bbf2fe96f4955399586b6f82bbe11ed2_720w.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CAS 与原子类详解"/></a><div class="content"><a class="title" href="/2026/06/03/cas-and-atomic-classes/" title="CAS 与原子类详解">CAS 与原子类详解</a><time datetime="2026-06-03T09:00:00.000Z" title="发表于 2026-06-03 17:00:00">2026-06-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/06/03/copy-on-write-arraylist/" title="CopyOnWriteArrayList 原理与应用"><img src="https://pic2.zhimg.com/80/v2-956755678361f9541d3606ca60590665_720w.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CopyOnWriteArrayList 原理与应用"/></a><div class="content"><a class="title" href="/2026/06/03/copy-on-write-arraylist/" title="CopyOnWriteArrayList 原理与应用">CopyOnWriteArrayList 原理与应用</a><time datetime="2026-06-03T08:00:00.000Z" title="发表于 2026-06-03 16:00:00">2026-06-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/06/03/fail-fast-fail-safe/" title="fail-fast 与 fail-safe 迭代器"><img src="https://pic1.zhimg.com/v2-ef7f14468872013bcffb4fdb25e21e04_r.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="fail-fast 与 fail-safe 迭代器"/></a><div class="content"><a class="title" href="/2026/06/03/fail-fast-fail-safe/" title="fail-fast 与 fail-safe 迭代器">fail-fast 与 fail-safe 迭代器</a><time datetime="2026-06-03T07:00:00.000Z" title="发表于 2026-06-03 15:00:00">2026-06-03</time></div></div></div></div></div></div></main><footer id="footer" style="background: rgba(13,13,13,0)"><div id="footer-wrap"><div class="copyright">&copy;2021 - 2026 By rain</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">最后的最后</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',preloader.endLoading())</script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/fireworks.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = false;
+document.body.addEventListener('input', POWERMODE);
+</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
